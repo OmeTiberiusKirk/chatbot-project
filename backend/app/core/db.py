@@ -2,6 +2,7 @@ from sqlmodel import Session, create_engine, select
 
 import crud
 from core.config import settings
+from app.core.models import Base
 
 from models import User, UserCreate
 
@@ -32,3 +33,7 @@ def init_db(session: Session) -> None:
             is_superuser=True,
         )
         user = crud.create_user(session=session, user_create=user_in)
+
+
+def create_tables() -> None:
+    Base.metadata.create_all(engine)
