@@ -1,5 +1,5 @@
-from models import User, UserCreate
-from core.security import get_password_hash
+from app.models import User, UserCreate
+from app.core.security import get_password_hash
 from sqlmodel import Session
 
 
