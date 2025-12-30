@@ -12,3 +12,5 @@ class Documennt(Base):
     __tablename__ = "documents"
     id: Mapped[int] = mapped_column(primary_key=True)
     source: Mapped[str] = mapped_column(String)
+    version: Mapped[str] = mapped_column(String, nullable=True)
+    checksum: Mapped[str] = mapped_column(String, unique=True)
