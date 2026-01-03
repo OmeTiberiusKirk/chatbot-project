@@ -1,7 +1,7 @@
 services:
 
   db:
-    image: postgres:17
+    image: pgvector/pgvector:0.8.1-pg18-trixie
     restart: always
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]

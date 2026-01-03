@@ -8,6 +8,7 @@ dependencies = [
     "alembic>=1.17.2",
     "fastapi[standard]<1.0.0,>=0.126.0",
     "passlib[bcrypt]>=1.7.4",
+    "pgvector>=0.4.2",
     "psycopg[binary]>=3.3.2",
     "pyjwt>=2.10.1",
     "sqlalchemy>=2.0.45",
