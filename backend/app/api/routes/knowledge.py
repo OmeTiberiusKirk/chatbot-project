@@ -1,8 +1,7 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, UploadFile, HTTPException, status
 from pathlib import Path
 import shutil
-from pypdf import PdfReader
-from app.api.deps import sha256
+from app.services.knowledge import hashReader
 
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
@@ -18,10 +17,8 @@ def root():
 
 
 @router.post("/uploadfile/")
-async def create_upload_file(file: UploadFile = File(...)):
-    reader = PdfReader(file.file)
-    pages = [page.extract_text() for _, page in enumerate(reader.pages)]
-    doc_hash = sha256("".join(pages))
+async def create_upload_file(file: UploadFile):
+    doc_hash = hashReader(file)
     print(doc_hash)
 
     # for pageno, page in enumerate(reader.pages):
