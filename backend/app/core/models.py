@@ -1,7 +1,21 @@
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy import String, Text, Integer, ForeignKey, SmallInteger
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship
+)
+from sqlalchemy.dialects.postgresql import UUID
+from uuid import uuid4
+from sqlalchemy import (
+    String,
+    Text,
+    Integer,
+    ForeignKey,
+    TIMESTAMP,
+    JSON,
+    func,
+)
 from pgvector.sqlalchemy import Vector
-from typing import List
 
 
 class Base(DeclarativeBase):
@@ -9,57 +23,85 @@ class Base(DeclarativeBase):
 
 
 class Document(Base):
-    __tablename__ = "document"
+    __tablename__ = "documents"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    source: Mapped[str] = mapped_column(String(100))
-    version: Mapped[str] = mapped_column(String(100), nullable=True)
-    checksum: Mapped[str] = mapped_column(String, unique=True)
+    document_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4
+    )
 
-    chunk_document: Mapped["ChunkDocument"] = relationship(
-        back_populates="document", cascade="all, delete-orphan"
+    source: Mapped[str] = mapped_column(String, nullable=False)
+    source_type: Mapped[str | None] = mapped_column(String(50))
+    checksum: Mapped[str] = mapped_column(
+        String(64), unique=True, nullable=False)
+
+    doc_metadata: Mapped[dict | None] = mapped_column(JSON)
+
+    created_at: Mapped[str] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now()
+    )
+
+    # relationships
+    chunks: Mapped[list["Chunk"]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan"
     )
 
 
 class Chunk(Base):
-    __tablename__ = "chunk"
+    __tablename__ = "chunks"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    content: Mapped[str] = mapped_column(Text)
-    content_hash: Mapped[str] = mapped_column(Text, unique=True)
-    token_count: Mapped[int] = mapped_column(Integer)
-
-    embedding: Mapped["Embedding"] = relationship(
-        back_populates="chunk", cascade="all, delete-orphan"
+    chunk_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4
     )
-    chunk_document: Mapped["ChunkDocument"] = relationship(
-        back_populates="chunk", cascade="all, delete-orphan"
+
+    document_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.document_id", ondelete="CASCADE"),
+        index=True
+    )
+
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content_hash: Mapped[str] = mapped_column(
+        String(64), unique=True, nullable=False)
+
+    token_count: Mapped[int | None] = mapped_column(Integer)
+
+    created_at: Mapped[str] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now()
+    )
+
+    # relationships
+    document: Mapped["Document"] = relationship(back_populates="chunks")
+    embedding: Mapped["Embedding"] = relationship(
+        back_populates="chunk",
+        uselist=False,
+        cascade="all, delete-orphan"
     )
 
 
 class Embedding(Base):
-    __tablename__ = "embedding"
+    __tablename__ = "embeddings"
 
-    chunk_id: Mapped[int] = mapped_column(
-        ForeignKey("chunk.id", ondelete="CASCADE"), primary_key=True
+    chunk_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("chunks.chunk_id", ondelete="CASCADE"),
+        primary_key=True
     )
-    embedding: Mapped[List[float]] = mapped_column(Vector(1024))
-    model: Mapped[str] = mapped_column(Text)
 
+    embedding: Mapped[list[float]] = mapped_column(
+        Vector(1536)  # ปรับตาม model embedding
+    )
+
+    created_at: Mapped[str] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now()
+    )
+
+    # relationships
     chunk: Mapped["Chunk"] = relationship(back_populates="embedding")
-
-
-class ChunkDocument(Base):
-    __tablename__ = "chunk_document"
-
-    chunk_id: Mapped[int] = mapped_column(
-        ForeignKey("chunk.id", ondelete="CASCADE"), primary_key=True
-    )
-    document_id: Mapped[int] = mapped_column(
-        ForeignKey("document.id", ondelete="CASCADE"), primary_key=True
-    )
-    page: Mapped[int] = mapped_column(SmallInteger)
-    section: Mapped[str] = mapped_column(Text)
-
-    chunk: Mapped["Chunk"] = relationship(back_populates="chunk_document")
-    document: Mapped["Document"] = relationship(back_populates="chunk_document")
