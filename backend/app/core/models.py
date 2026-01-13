@@ -6,6 +6,7 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.dialects.postgresql import UUID
 from uuid import uuid4
+from enum import Enum
 from sqlalchemy import (
     String,
     Text,
@@ -16,6 +17,12 @@ from sqlalchemy import (
     func,
 )
 from pgvector.sqlalchemy import Vector
+from typing import Literal
+
+
+class FileType(Enum):
+    PDF = 'pdf'
+    DOC = 'doc'
 
 
 class Base(DeclarativeBase):
@@ -48,6 +55,11 @@ class Document(Base):
         back_populates="document",
         cascade="all, delete-orphan"
     )
+
+    def __init__(self, source: str, source_type: Literal["pdf", "doc"], checksum: str):
+        self.source = source
+        self.source_type = source_type
+        self.checksum = checksum
 
 
 class Chunk(Base):
