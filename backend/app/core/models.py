@@ -37,14 +37,11 @@ class Document(Base):
         primary_key=True,
         default=uuid4
     )
-
     source: Mapped[str] = mapped_column(String, nullable=False)
     source_type: Mapped[str | None] = mapped_column(String(50))
     checksum: Mapped[str] = mapped_column(
         String(64), unique=True, nullable=False)
-
     doc_metadata: Mapped[dict | None] = mapped_column(JSON)
-
     created_at: Mapped[str] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now()
@@ -56,10 +53,17 @@ class Document(Base):
         cascade="all, delete-orphan"
     )
 
-    def __init__(self, source: str, source_type: Literal["pdf", "doc"], checksum: str):
+    def __init__(
+        self,
+        source: str,
+        source_type: Literal["pdf", "doc"],
+        checksum: str,
+        chunks: Mapped[list["Chunk"]]
+    ):
         self.source = source
         self.source_type = source_type
         self.checksum = checksum
+        self.chunks = chunks
 
 
 class Chunk(Base):
@@ -70,19 +74,15 @@ class Chunk(Base):
         primary_key=True,
         default=uuid4
     )
-
     document_id: Mapped[str] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("documents.document_id", ondelete="CASCADE"),
         index=True
     )
-
     content: Mapped[str] = mapped_column(Text, nullable=False)
     content_hash: Mapped[str] = mapped_column(
         String(64), unique=True, nullable=False)
-
     token_count: Mapped[int | None] = mapped_column(Integer)
-
     created_at: Mapped[str] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now()
@@ -90,30 +90,40 @@ class Chunk(Base):
 
     # relationships
     document: Mapped["Document"] = relationship(back_populates="chunks")
-    embedding: Mapped["Embedding"] = relationship(
-        back_populates="chunk",
-        uselist=False,
-        cascade="all, delete-orphan"
-    )
+    # embedding: Mapped["Embedding"] = relationship(
+    #     back_populates="chunk",
+    #     uselist=False,
+    #     cascade="all, delete-orphan"
+    # )
+
+    def __init__(
+        self,
+        content: str,
+        content_hash: str,
+        token_count: int | None
+    ):
+        self.content = content
+        self.content_hash = content_hash
+        self.token_count = token_count
 
 
-class Embedding(Base):
-    __tablename__ = "embeddings"
+# class Embedding(Base):
+#     __tablename__ = "embeddings"
 
-    chunk_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("chunks.chunk_id", ondelete="CASCADE"),
-        primary_key=True
-    )
+#     chunk_id: Mapped[str] = mapped_column(
+#         UUID(as_uuid=True),
+#         ForeignKey("chunks.chunk_id", ondelete="CASCADE"),
+#         primary_key=True
+#     )
 
-    embedding: Mapped[list[float]] = mapped_column(
-        Vector(1536)  # ปรับตาม model embedding
-    )
+#     embedding: Mapped[list[float]] = mapped_column(
+#         Vector(1536)  # ปรับตาม model embedding
+#     )
 
-    created_at: Mapped[str] = mapped_column(
-        TIMESTAMP(timezone=True),
-        server_default=func.now()
-    )
+#     created_at: Mapped[str] = mapped_column(
+#         TIMESTAMP(timezone=True),
+#         server_default=func.now()
+#     )
 
-    # relationships
-    chunk: Mapped["Chunk"] = relationship(back_populates="embedding")
+#     # relationships
+#     chunk: Mapped["Chunk"] = relationship(back_populates="embedding")

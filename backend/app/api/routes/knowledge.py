@@ -17,8 +17,8 @@ async def ingest(session: SessionDep, file: UploadFile):
     # Stream the file to disk in chunks
     try:
         knl = Knowledge(file, session)
-        knl.createFile()
-        knl.insertDocument()
+        knl.create_file()
+        knl.insert_document()
     except Exception as e:
         print(e)
         raise HTTPException(
