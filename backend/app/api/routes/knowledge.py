@@ -15,22 +15,21 @@ async def ingest(session: SessionDep, file: UploadFile):
     # Define the destination path
 
     # Stream the file to disk in chunks
-    try:
-        knl = Knowledge(file, session)
-        knl.create_file()
-        knl.insert_document()
-    except Exception as e:
-        print(e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=e.__str__()
-        )
-    finally:
-        await file.close()
+    # try:
+    #     knl = Knowledge(file, session)
+    #     knl.read_pdf_with_ocr()
+    #     knl.create_file()
+    #     knl.insert_document()
+    # except Exception as e:
+    #     print(e)
+    #     raise HTTPException(
+    #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    #         detail=e.__str__()
+    #     )
+    # finally:
+    #     await file.close()
 
-    # knl = Knowledge(file, session)
-    # knl.createFile()
-    # knl.insertDocument()
-    # await file.close()
+    knl = Knowledge(file, session)
+    knl.read_pdf_with_ocr()
 
     return {"filename": file.filename}
