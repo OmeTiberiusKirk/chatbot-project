@@ -30,6 +30,6 @@ async def ingest(session: SessionDep, file: UploadFile):
     #     await file.close()
 
     knl = Knowledge(file, session)
-    knl.read_pdf_with_ocr()
+    content = knl.read_pdf_with_ocr()
 
-    return {"filename": file.filename}
+    return {"content": content}
