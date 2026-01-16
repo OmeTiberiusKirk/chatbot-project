@@ -1,4 +1,5 @@
 import hashlib
+import easyocr
 from fastapi import UploadFile
 from pypdf import PdfReader
 import shutil
@@ -12,18 +13,18 @@ from pdf2image import convert_from_path
 import re
 import numpy as np
 import cv2
+import threading
+import time
 
 THAI_MARKS = "่้๊๋ิีึืุูั็์ํเาะโไแใ์"
 # Create an upload directory if it doesn't exist
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 poppler_path = "C:/Users/stron/Downloads/poppler-25.12.0/Library/bin"
-# config = r"""
-# --oem 3
-# --psm 6
-# -c preserve_interword_spaces=1
-# """
-config = '--psm6'
+config = r"""
+--esm 3
+--psm 6
+"""
 
 
 class Knowledge:
@@ -51,64 +52,62 @@ class Knowledge:
             shutil.copyfileobj(self.file, buffer)
 
     def read_pdf_with_ocr(self):
-        import easyocr
-
         print("Converting PDF to images...")
         pages = convert_from_path(
             self.file_path, poppler_path=poppler_path, dpi=400)
         print(f"Processing {len(pages)} pages with OCR...")
         reader = easyocr.Reader(['th', 'en'], gpu=True)
 
-        # img = np.array(pages[0])
+        # img = np.array(pages[6])
         # img = self.preprocess_for_easyocr(img)
+        # img = self.crop_content_only(img)
         # cv2.imwrite(f'prepared_image.jpg', img)
         # result = reader.readtext(img, detail=0)
-        # text = "\n".join(result)
+        # text = " ".join(result)
+        # return text
+
+        # img = self.preprocess_for_tesseract(img)
+        # cv2.imwrite(f'prepared_image.jpg', img)
+        # text = pytesseract.image_to_string(
+        #     img, lang='tha+eng', config=config)
         # return text
 
         full_text = ""
         for i, page in enumerate(pages):
             img = np.array(page)
-            # img = self.preprocess_for_tesseract(page)
-            # img = self.preprocess_for_easyocr(img)
-            img = self.auto_crop(img)
-            # text = pytesseract.image_to_string(
-            #     img, lang='tha+eng', config=config)
-
-            # cv2.imwrite(f'prepared_image-{i}.jpg', img)
+            img = self.preprocess_for_easyocr(img)
+            img = self.crop_content_only(img)
+            cv2.imwrite(f'prepared_image-{i}.jpg', img)
             result = reader.readtext(img, detail=0)
-            text = "\n".join(result)
-
-            # Formatting distinct pages
-            full_text += f"\n--- Page {i + 1} ---\n"
+            text = " ".join(result)
             full_text += text
+
         return full_text
 
-    def clean_thai_text(self, text: str) -> str:
-        text = text.replace("\u00a0", " ").replace("\u200b", "")
-        text = re.sub(r"([ก-ฮ])\s+([ก-ฮ])", r"\1\2", text)
-        text = re.sub(rf"([ก-ฮ])\s+([{THAI_MARKS}])", r"\1\2", text)
-        text = re.sub(rf"([{THAI_MARKS}])\s+([ก-ฮ])", r"\1\2", text)
-        text = re.sub(
-            rf"([{THAI_MARKS}])\s+([{THAI_MARKS}])", r"\1\2", text)
-        text = re.sub(r"\s+", " ", text)
-        return text.strip()
-
     def preprocess_for_tesseract(self, img):
-        img = np.array(img)
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        gray = cv2.bilateralFilter(gray, 9, 75, 75)
-        clahe = cv2.createCLAHE(2.0, (8, 8))
-        gray = clahe.apply(gray)
-        th = cv2.adaptiveThreshold(
-            gray, 255,
-            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY,
-            31, 11
-        )
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
-        th = cv2.morphologyEx(th, cv2.MORPH_OPEN, kernel)
-        return th
+        # 1. Load ภาพแบบ Grayscale
+        # img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+        # 2. Upscaling (สำคัญมากสำหรับภาษาไทย)
+        # ขยายภาพ 2 เท่าเพื่อให้ Tesseract เห็นหัวตัวอักษรชัดขึ้น
+        img = cv2.resize(img, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+
+        # 3. Denoising (ลบจุดรบกวนเล็กๆ)
+        img = cv2.fastNlMeansDenoising(img, None, 10, 7, 21)
+
+        # 4. Binarization (ทำเป็นขาว-ดำ)
+        # ใช้ Otsu's Thresholding เพื่อหาค่าแสงที่เหมาะสมอัตโนมัติ
+        _, img = cv2.threshold(
+            img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        # 5. Morphological Operations (เชื่อมตัวอักษรที่ขาด)
+        # ถ้าตัวหนังสือห่างหรือเส้นบาง เราจะใช้ 'Dilation' เพื่อให้เส้นหนาขึ้นเล็กน้อย
+        kernel = np.ones((2, 2), np.uint8)
+        # ใช้ Morphological Close เพื่อปิดช่องว่างเล็กๆ ในตัวอักษร
+        img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+
+        return img
 
     def preprocess_for_easyocr(self, img):
         # 1. โหลดภาพ
@@ -128,22 +127,37 @@ class Knowledge:
 
         return thresh
 
-    def auto_crop(self, image):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        # กลับสีภาพเพื่อให้ตัวหนังสือเป็นสีขาว พื้นหลังเป็นสีดำ (สำหรับหา Contour)
-        thresh = cv2.threshold(
-            gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    def read_pdf(self, reader, img):
+        result = reader.readtext(img, detail=0)
+        text = " ".join(result)
+        print(text)
 
-        # หาขอบเขตของวัตถุทั้งหมดในภาพ
-        cnts = cv2.findContours(
-            thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    def clean_thai_text(self, text: str) -> str:
+        text = text.replace("\u00a0", " ").replace("\u200b", "")
+        text = re.sub(r"([ก-ฮ])\s+([ก-ฮ])", r"\1\2", text)
+        text = re.sub(rf"([ก-ฮ])\s+([{THAI_MARKS}])", r"\1\2", text)
+        text = re.sub(rf"([{THAI_MARKS}])\s+([ก-ฮ])", r"\1\2", text)
+        text = re.sub(
+            rf"([{THAI_MARKS}])\s+([{THAI_MARKS}])", r"\1\2", text)
+        text = re.sub(r"\s+", " ", text)
+        return text.strip()
 
-        # รวมทุกจุดเข้าด้วยกันเพื่อหากรอบสี่เหลี่ยมที่ครอบคลุมเนื้อหาทั้งหมด
-        all_cnts = np.concatenate(cnts)
-        x, y, w, h = cv2.boundingRect(all_cnts)
+    def crop_content_only(self, cv_img):
+        # 1. กลับสีภาพ (ให้พื้นหลังเป็นดำ ตัวอักษรเป็นขาว เพื่อหาขอบเขต)
+        inverted = cv2.bitwise_not(cv_img)
 
-        return image[y:y+h, x:x+w]
+        # 2. หาจุดที่มีสีขาว (ซึ่งก็คือตัวหนังสือ)
+        points = cv2.findNonZero(inverted)
+
+        # 3. สร้างสี่เหลี่ยมล้อมรอบจุดทั้งหมด
+        x, y, w, h = cv2.boundingRect(points)
+
+        # 4. Crop โดยเผื่อขอบ (Padding) ไว้สัก 20-40 pixels ไม่ให้ชิดเกินไป
+        padding = 30
+        crop = cv_img[max(0, y-padding):min(cv_img.shape[0], y+h+padding),
+                      max(0, x-padding):min(cv_img.shape[1], x+w+padding)]
+
+        return crop
 
     def insert_document(self) -> None:
         doc = Document(

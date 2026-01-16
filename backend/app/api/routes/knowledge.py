@@ -6,7 +6,7 @@ router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 
 
 @router.post("/ingest/")
-async def ingest(session: SessionDep, file: UploadFile):
+def ingest(session: SessionDep, file: UploadFile):
 
     # for pageno, page in enumerate(reader.pages):
     #     t = page.extract_text() or ""
