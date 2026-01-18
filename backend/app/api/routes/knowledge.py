@@ -6,30 +6,19 @@ router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 
 
 @router.post("/ingest/")
-def ingest(session: SessionDep, file: UploadFile):
-
-    # for pageno, page in enumerate(reader.pages):
-    #     t = page.extract_text() or ""
-    #     print(t)
-
-    # Define the destination path
-
+async def ingest(session: SessionDep, file: UploadFile):
     # Stream the file to disk in chunks
-    # try:
-    #     knl = Knowledge(file, session)
-    #     knl.read_pdf_with_ocr()
-    #     knl.create_file()
-    #     knl.insert_document()
-    # except Exception as e:
-    #     print(e)
-    #     raise HTTPException(
-    #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    #         detail=e.__str__()
-    #     )
-    # finally:
-    #     await file.close()
-
-    knl = Knowledge(file, session)
-    content = knl.read_pdf_with_ocr()
-
-    return {"content": content}
+    try:
+        knl = Knowledge(file, session)
+        knl.create_file()
+        content = knl.read_pdf_with_ocr()
+        # knl.insert_document()
+        return {"content": content}
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=e.__str__()
+        )
+    finally:
+        await file.close()

@@ -8,13 +8,12 @@ from app.api.deps import SessionDep
 from pathlib import Path
 from typing import BinaryIO
 from app.api.deps import SessionDep
-import pytesseract
 from pdf2image import convert_from_path
 import re
 import numpy as np
 import cv2
-import threading
-import time
+import pytesseract
+import concurrent.futures
 
 THAI_MARKS = "่้๊๋ิีึืุูั็์ํเาะโไแใ์"
 # Create an upload directory if it doesn't exist
@@ -22,8 +21,9 @@ UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 poppler_path = "C:/Users/stron/Downloads/poppler-25.12.0/Library/bin"
 config = r"""
---esm 3
+--oem 3
 --psm 6
+-c preserve_interword_spaces=1
 """
 
 
@@ -56,31 +56,31 @@ class Knowledge:
         pages = convert_from_path(
             self.file_path, poppler_path=poppler_path, dpi=400)
         print(f"Processing {len(pages)} pages with OCR...")
-        reader = easyocr.Reader(['th', 'en'], gpu=True)
+        # reader = easyocr.Reader(['th', 'en'], gpu=True)
 
-        # img = np.array(pages[6])
-        # img = self.preprocess_for_easyocr(img)
-        # img = self.crop_content_only(img)
-        # cv2.imwrite(f'prepared_image.jpg', img)
-        # result = reader.readtext(img, detail=0)
-        # text = " ".join(result)
-        # return text
-
-        # img = self.preprocess_for_tesseract(img)
-        # cv2.imwrite(f'prepared_image.jpg', img)
-        # text = pytesseract.image_to_string(
-        #     img, lang='tha+eng', config=config)
-        # return text
-
+        threads = []
         full_text = ""
-        for i, page in enumerate(pages):
-            img = np.array(page)
-            img = self.preprocess_for_easyocr(img)
-            img = self.crop_content_only(img)
-            cv2.imwrite(f'prepared_image-{i}.jpg', img)
-            result = reader.readtext(img, detail=0)
-            text = " ".join(result)
-            full_text += text
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(pages)) as executor:
+            future_to_pages = {executor.submit(
+                self.read_pdf, page): i for i, page in enumerate(pages)}
+            for future in concurrent.futures.as_completed(future_to_pages):
+                text = future.result()
+                full_text += text
+
+            # for _, page in enumerate(pages):
+            #     img = np.array(page)
+
+            # img = self.preprocess_for_easyocr(img)
+            # img = self.crop_content_only(img)
+            # result = reader.readtext(img, detail=0)
+            # text = " ".join(result)
+
+            # img = self.preprocess_for_tesseract(img)
+            # img = self.crop_content_only(img)
+            # text = pytesseract.image_to_string(
+            #     img, lang='tha+eng', config=config)
+
+            # full_text += text
 
         return full_text
 
@@ -127,10 +127,13 @@ class Knowledge:
 
         return thresh
 
-    def read_pdf(self, reader, img):
-        result = reader.readtext(img, detail=0)
-        text = " ".join(result)
-        print(text)
+    def read_pdf(self, page):
+        img = np.array(page)
+        img = self.preprocess_for_tesseract(img)
+        img = self.crop_content_only(img)
+        text = pytesseract.image_to_string(
+            img, lang='tha+eng', config=config)
+        return text
 
     def clean_thai_text(self, text: str) -> str:
         text = text.replace("\u00a0", " ").replace("\u200b", "")
