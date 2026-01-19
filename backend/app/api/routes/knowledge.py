@@ -1,19 +1,25 @@
 from fastapi import APIRouter, UploadFile, HTTPException, status
 from app.api.deps import SessionDep
-from app.services.knowledge import Knowledge
+from app.services.knowledge import create_file, read_pdf_with_ocr
+from multiprocessing import cpu_count
+from pathlib import Path
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 
 @router.post("/ingest/")
 async def ingest(session: SessionDep, file: UploadFile):
-    # Stream the file to disk in chunks
+    file_path = UPLOAD_DIR / file.filename
+    cores = cpu_count()
+    print(f"เครื่องนี้มี {cores} cores")
+
     try:
-        knl = Knowledge(file, session)
-        knl.create_file()
-        content = knl.read_pdf_with_ocr()
-        # knl.insert_document()
-        return {"content": content}
+        await create_file(file_path, file)
+        read_pdf_with_ocr(file_path)
+
+        return {"content": "content"}
     except Exception as e:
         print(e)
         raise HTTPException(

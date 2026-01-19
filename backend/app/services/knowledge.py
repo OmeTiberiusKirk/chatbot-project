@@ -2,11 +2,10 @@ import hashlib
 import easyocr
 from fastapi import UploadFile
 from pypdf import PdfReader
-import shutil
 from app.core.models import Document, Chunk
 from app.api.deps import SessionDep
 from pathlib import Path
-from typing import BinaryIO
+from typing import Any, BinaryIO
 from app.api.deps import SessionDep
 from pdf2image import convert_from_path
 import re
@@ -14,6 +13,7 @@ import numpy as np
 import cv2
 import pytesseract
 import concurrent.futures
+from multiprocessing import cpu_count, Pool
 
 THAI_MARKS = "่้๊๋ิีึืุูั็์ํเาะโไแใ์"
 # Create an upload directory if it doesn't exist
@@ -21,10 +21,22 @@ UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 poppler_path = "C:/Users/stron/Downloads/poppler-25.12.0/Library/bin"
 config = r"""
---oem 3
 --psm 6
 -c preserve_interword_spaces=1
 """
+
+
+async def create_file(file_path: Path | Any, file: UploadFile) -> None:
+    contents = await file.read()  # Await the coroutine to get bytes
+    with open(file_path, "wb") as buffer:
+        buffer.write(contents)
+
+
+def read_pdf_with_ocr(file_path: Path | Any):
+    print("Converting PDF to images...")
+    pages = convert_from_path(
+        file_path, poppler_path=poppler_path, dpi=400)
+    print(f"Processing {len(pages)} pages with OCR...")
 
 
 class Knowledge:
@@ -47,10 +59,6 @@ class Knowledge:
     def __sha256(self, text: str) -> str:
         return hashlib.sha256(text.encode()).hexdigest()
 
-    def create_file(self) -> None:
-        with open(self.file_path, "wb") as buffer:
-            shutil.copyfileobj(self.file, buffer)
-
     def read_pdf_with_ocr(self):
         print("Converting PDF to images...")
         pages = convert_from_path(
@@ -60,27 +68,28 @@ class Knowledge:
 
         threads = []
         full_text = ""
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(pages)) as executor:
-            future_to_pages = {executor.submit(
-                self.read_pdf, page): i for i, page in enumerate(pages)}
-            for future in concurrent.futures.as_completed(future_to_pages):
-                text = future.result()
-                full_text += text
 
-            # for _, page in enumerate(pages):
-            #     img = np.array(page)
+        # with concurrent.futures.ThreadPoolExecutor(max_workers=len(pages)) as executor:
+        #     future_to_pages = {executor.submit(
+        #         self.read_pdf, page): i for i, page in enumerate(pages)}
+        #     for future in concurrent.futures.as_completed(future_to_pages):
+        #         text = future.result()
+        #         full_text += text
 
-            # img = self.preprocess_for_easyocr(img)
-            # img = self.crop_content_only(img)
-            # result = reader.readtext(img, detail=0)
-            # text = " ".join(result)
+        # for _, page in enumerate(pages):
+        #     img = np.array(page)
 
-            # img = self.preprocess_for_tesseract(img)
-            # img = self.crop_content_only(img)
-            # text = pytesseract.image_to_string(
-            #     img, lang='tha+eng', config=config)
+        # img = self.preprocess_for_easyocr(img)
+        # img = self.crop_content_only(img)
+        # result = reader.readtext(img, detail=0)
+        # text = " ".join(result)
 
-            # full_text += text
+        # img = self.preprocess_for_tesseract(img)
+        # img = self.crop_content_only(img)
+        # text = pytesseract.image_to_string(
+        #     img, lang='tha+eng', config=config)
+
+        # full_text += text
 
         return full_text
 
