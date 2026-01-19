@@ -8,3 +8,4 @@ __pycache__/
 uploads/
 *.code-workspace
 *.jpg
+.python-version
