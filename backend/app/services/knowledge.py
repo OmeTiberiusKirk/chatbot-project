@@ -1,5 +1,4 @@
 import hashlib
-import easyocr
 from fastapi import UploadFile
 from pypdf import PdfReader
 from app.core.models import Document, Chunk
@@ -12,8 +11,9 @@ import re
 import numpy as np
 import cv2
 import pytesseract
-import concurrent.futures
-from multiprocessing import cpu_count, Pool
+from multiprocessing import Pool
+import psutil
+
 
 THAI_MARKS = "่้๊๋ิีึืุูั็์ํเาะโไแใ์"
 # Create an upload directory if it doesn't exist
@@ -33,10 +33,73 @@ async def create_file(file_path: Path | Any, file: UploadFile) -> None:
 
 
 def read_pdf_with_ocr(file_path: Path | Any):
+    cores = psutil.cpu_count(logical=False)
+    print(f"This machine has {cores} cores")
+
     print("Converting PDF to images...")
     pages = convert_from_path(
         file_path, poppler_path=poppler_path, dpi=400)
     print(f"Processing {len(pages)} pages with OCR...")
+
+    with Pool(processes=2) as pool:
+        result = pool.map(process_image, [(i, page)
+                          for i, page in enumerate(pages)])
+        result = sorted(result, key=lambda r: r[0])
+        print(" ".join([page for _, page in result]))
+
+
+def process_image(page):
+    i, p = page
+    img = np.array(p)
+    img = preprocess_for_tesseract(img)
+    text = pytesseract.image_to_string(
+        img, lang='tha+eng', config=config)
+
+    return (i, text)
+
+
+def preprocess_for_tesseract(img):
+    # 1. Load ภาพแบบ Grayscale
+    # img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+    # 2. Upscaling (สำคัญมากสำหรับภาษาไทย)
+    # ขยายภาพ 2 เท่าเพื่อให้ Tesseract เห็นหัวตัวอักษรชัดขึ้น
+    img = cv2.resize(img, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+
+    # 3. Denoising (ลบจุดรบกวนเล็กๆ)
+    img = cv2.fastNlMeansDenoising(img, None, 10, 7, 21)
+
+    # 4. Binarization (ทำเป็นขาว-ดำ)
+    # ใช้ Otsu's Thresholding เพื่อหาค่าแสงที่เหมาะสมอัตโนมัติ
+    _, img = cv2.threshold(
+        img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    # 5. Morphological Operations (เชื่อมตัวอักษรที่ขาด)
+    # ถ้าตัวหนังสือห่างหรือเส้นบาง เราจะใช้ 'Dilation' เพื่อให้เส้นหนาขึ้นเล็กน้อย
+    kernel = np.ones((2, 2), np.uint8)
+    # ใช้ Morphological Close เพื่อปิดช่องว่างเล็กๆ ในตัวอักษร
+    img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+
+    return img
+
+
+def crop_content_only(img):
+    # 1. กลับสีภาพ (ให้พื้นหลังเป็นดำ ตัวอักษรเป็นขาว เพื่อหาขอบเขต)
+    inverted = cv2.bitwise_not(img)
+
+    # 2. หาจุดที่มีสีขาว (ซึ่งก็คือตัวหนังสือ)
+    points = cv2.findNonZero(inverted)
+
+    # 3. สร้างสี่เหลี่ยมล้อมรอบจุดทั้งหมด
+    x, y, w, h = cv2.boundingRect(points)
+
+    # 4. Crop โดยเผื่อขอบ (Padding) ไว้สัก 20-40 pixels ไม่ให้ชิดเกินไป
+    padding = 30
+    crop = img[max(0, y-padding):min(img.shape[0], y+h+padding),
+               max(0, x-padding):min(img.shape[1], x+w+padding)]
+
+    return crop
 
 
 class Knowledge:

@@ -12,8 +12,6 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 @router.post("/ingest/")
 async def ingest(session: SessionDep, file: UploadFile):
     file_path = UPLOAD_DIR / file.filename
-    cores = cpu_count()
-    print(f"เครื่องนี้มี {cores} cores")
 
     try:
         await create_file(file_path, file)
