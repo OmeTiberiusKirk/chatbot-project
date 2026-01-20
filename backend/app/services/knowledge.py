@@ -13,17 +13,21 @@ import cv2
 import pytesseract
 from multiprocessing import Pool
 import psutil
+import os
+from enum import Enum
 
 
 THAI_MARKS = "่้๊๋ิีึืุูั็์ํเาะโไแใ์"
-# Create an upload directory if it doesn't exist
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
-poppler_path = "C:/Users/stron/Downloads/poppler-25.12.0/Library/bin"
-config = r"""
+POPPLER_PATH = "C:/Users/stron/Downloads/poppler-25.12.0/Library/bin"
+CONFIG = r"""
 --psm 6
 -c preserve_interword_spaces=1
 """
+
+
+class FileExt(Enum):
+    MD = "md"
+    PDF = "pdf"
 
 
 async def create_file(file_path: Path | Any, file: UploadFile) -> None:
@@ -32,20 +36,32 @@ async def create_file(file_path: Path | Any, file: UploadFile) -> None:
         buffer.write(contents)
 
 
-def read_pdf_with_ocr(file_path: Path | Any):
+def ingest_md():
+    print("ingest markdown")
+    # with open(file_path, 'r') as file:
+    #     content = file.read()
+    #     print(content)
+
+
+def ingest_pdf(file_path: Path):
+    with open(file_path, "rb") as f:
+        print(f)
+
+
+def read_pdf_with_ocr(file_path: Path | Any) -> str:
     cores = psutil.cpu_count(logical=False)
     print(f"This machine has {cores} cores")
 
     print("Converting PDF to images...")
     pages = convert_from_path(
-        file_path, poppler_path=poppler_path, dpi=400)
+        file_path, poppler_path=POPPLER_PATH, dpi=400)
     print(f"Processing {len(pages)} pages with OCR...")
 
     with Pool(processes=2) as pool:
         result = pool.map(process_image, [(i, page)
                           for i, page in enumerate(pages)])
         result = sorted(result, key=lambda r: r[0])
-        print(" ".join([page for _, page in result]))
+        return " ".join([page for _, page in result])
 
 
 def process_image(page):
@@ -53,9 +69,20 @@ def process_image(page):
     img = np.array(p)
     img = preprocess_for_tesseract(img)
     text = pytesseract.image_to_string(
-        img, lang='tha+eng', config=config)
+        img, lang='tha+eng', config=CONFIG)
 
     return (i, text)
+
+
+# Define allowed extensions for validation
+ALLOWED_EXTENSIONS = {".md", ".pdf"}
+
+
+def allowed_file(filename):
+    # Split the filename into name and extension
+    _, extension = os.path.splitext(filename)
+    # Check if the extension (in lowercase) is in the allowed set
+    return extension.lower() in ALLOWED_EXTENSIONS
 
 
 def preprocess_for_tesseract(img):
