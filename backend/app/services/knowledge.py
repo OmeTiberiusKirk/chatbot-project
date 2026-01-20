@@ -1,6 +1,6 @@
 import hashlib
 from fastapi import UploadFile
-from pypdf import PdfReader
+from pypdf import PdfReader, PageObject
 from app.core.models import Document, Chunk
 from app.api.deps import SessionDep
 from pathlib import Path
@@ -17,7 +17,7 @@ import os
 from enum import Enum
 
 
-THAI_MARKS = "่้๊๋ิีึืุูั็์ํเาะโไแใ์"
+THAI_MARKS = "่้๊๋ิีึืุูั็์ํเาะโไแใำ"
 POPPLER_PATH = "C:/Users/stron/Downloads/poppler-25.12.0/Library/bin"
 CONFIG = r"""
 --psm 6
@@ -36,16 +36,41 @@ async def create_file(file_path: Path | Any, file: UploadFile) -> None:
         buffer.write(contents)
 
 
+def insert_document(session: SessionDep, file_path: Path) -> None:
+    doc = Document(
+        source=f"{file_path}",
+        source_type="pdf",
+        checksum=get_hashed_doc(),
+        chunks=[
+            Chunk(
+                content="content....",
+                content_hash="2f2fj2fjlfjljwelf",
+                token_count=2
+            )
+        ]
+    )
+
+    session.add(doc)
+    session.commit()
+
+
+def ingest_pdf(session: SessionDep, file_path: Path):
+    with open(file_path, "rb") as byte:
+        pages = PdfReader(byte).pages
+        insert_document(session, file_path)
+
+        full_text = ""
+        for page in pages:
+            text = page.extract_text()
+            full_text += clean_thai_text(text)
+        return full_text
+
+
 def ingest_md():
     print("ingest markdown")
     # with open(file_path, 'r') as file:
     #     content = file.read()
     #     print(content)
-
-
-def ingest_pdf(file_path: Path):
-    with open(file_path, "rb") as f:
-        print(f)
 
 
 def read_pdf_with_ocr(file_path: Path | Any) -> str:
@@ -57,7 +82,7 @@ def read_pdf_with_ocr(file_path: Path | Any) -> str:
         file_path, poppler_path=POPPLER_PATH, dpi=400)
     print(f"Processing {len(pages)} pages with OCR...")
 
-    with Pool(processes=2) as pool:
+    with Pool(processes=cores) as pool:
         result = pool.map(process_image, [(i, page)
                           for i, page in enumerate(pages)])
         result = sorted(result, key=lambda r: r[0])
@@ -129,14 +154,72 @@ def crop_content_only(img):
     return crop
 
 
+def get_hashed_doc(pages: list[PageObject]) -> str:
+    pages = [page.extract_text() for page in pages]
+    doc_hash = sha256("".join(pages))
+    return doc_hash
+
+
+def sha256(text: str) -> str:
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+words = [("บารุง", "บำรุง"), ("ศึกษำ", "ศึกษา"),
+         ("เอกสำร", "เอกสาร"), ("สัญญำ", "สัญญา"),
+         ("งำน", "งาน"), ("ข่ำว", "ข่าว"), ("อย่ำง", "อย่าง"),
+         ("บำท", "บาท"), ("อนุญำต", "อนุญาต"), ("ควำม", "ความ"),
+         ("ชั่วครำว", "ชั่วคราว"), ("รักษำ", "รักษา"), ("พยำบำล", "พยาบาล"),
+         ("วิเครำะห์", "วิเคราะห์"), ("เวลำ", "เวลา"), ("ถัดจำก", "ถัดจาก"),
+         ("บริกำร", "บริการ"), ("ตำม", "ตาม"), ("รำชกำร", "ราชการ"),
+         ("เหมำะสม", "เหมาะสม"), ("บริหำร", "บริหาร"), ("จัดกำร", "จัดการ"),
+         ("บัญชีกลำง", "บัญชีกลาง"), ("(คมนำคม)|(คมำคม)",
+                                      "คมนาคม"), ("สำมำรถ", "สามารถ"),
+         ("กำรมอบหมำย", "การมอบหมาย"), ("ภำรกิจ", "ภารกิจ"), ("สำรบรรณ", "สารบรรณ"),
+         ("รำคำ", "ราคา"), ("กำรประชำสัมพันธ์",
+                            "การประชาสัมพันธ์"), ("ประกำศ", "ประกาศ"),
+         ("กำรบูรณำกำร", "การบูรณาการ"), ("พิจำรณำจำก", "พิจารณาจาก"),
+         ("อัตรำ", "อัตรา"), ("ฐำนข้อมูล", "ฐานข้อมูล"), ("วิทยำกำร", "วิทยาการ"),
+         ("สำขำ", "สาขา"), ("ประสบกำรณ์", "ประสบการณ์"), ("กำรต่อต้ำน", "การต่อต้าน"),
+         ("กำรทุจริต", "การทุจริต"), ("กำรบำรุง",
+                                      "การบำรุง"), ("แจ้งจำก", "แจ้งจาก"),
+         ("ชำนำญกำร", "ชำนาญการ"), ("ปฏิบัติกำร", "ปฏิบัติการ"), ("ภำยใน", "ภายใน"),
+         ("ค่ำบริการ", "ค่าบริการ"), ("จ้ำง",
+                                      "จ้าง"), ("ปัญหำ", "ปัญหา"), ("ภำษำ", "ภาษา"),
+         ("จานวน", "จำนวน"), ("นามา", "นำมา"), ("ชาระ",
+                                                "ชำระ"), ("กำรทำงาน", "การทำงาน"),
+         ("กำรพัฒนำ", "การพัฒนา"), ("สำรสนเทศ", "สารสนเทศ"), ("ทิงงาน", "ทิ้งงาน"),
+         ("ถ่ำย", "ถ่าย")]
+
+
+def clean_thai_text(text: str) -> str:
+    text = text.replace("\u00a0", " ").replace("\u200b", "")
+    text = re.sub(rf"([ก-ฮ])\s+([{THAI_MARKS}])", r"\1\2", text)
+    text = re.sub(rf"([{THAI_MARKS}])\s+([ก-ฮ])", r"\1\2", text)
+    text = re.sub(
+        rf"([{THAI_MARKS}])\s+([{THAI_MARKS}])", r"\1\2", text)
+    text = re.sub(r"\s{2,}", " ", text)
+    text = re.sub(r"\n", "", text)
+
+    for word in words:
+        text = re.sub(rf"{word[0]}", word[1], text)
+
+    return text.strip()
+
+
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+
 class Knowledge:
+    upload_file = UploadFile
     file_path: str
     file: BinaryIO
     session: SessionDep
 
-    def __init__(self, file: UploadFile, session: SessionDep):
-        self.file_path = UPLOAD_DIR / file.filename
-        self.file = file.file
+    def __init__(self, session: SessionDep, upload_file: UploadFile):
+        self.upload_file = upload_file
+        self.file_path = UPLOAD_DIR / upload_file.filename
+        self.file = upload_file.file
         self.session = session
 
     def __get_hashed_doc(self) -> str:
@@ -152,7 +235,7 @@ class Knowledge:
     def read_pdf_with_ocr(self):
         print("Converting PDF to images...")
         pages = convert_from_path(
-            self.file_path, poppler_path=poppler_path, dpi=400)
+            self.file_path, poppler_path=POPPLER_PATH, dpi=400)
         print(f"Processing {len(pages)} pages with OCR...")
         # reader = easyocr.Reader(['th', 'en'], gpu=True)
 
@@ -231,7 +314,7 @@ class Knowledge:
         img = self.preprocess_for_tesseract(img)
         img = self.crop_content_only(img)
         text = pytesseract.image_to_string(
-            img, lang='tha+eng', config=config)
+            img, lang='tha+eng', config=CONFIG)
         return text
 
     def clean_thai_text(self, text: str) -> str:
@@ -277,3 +360,9 @@ class Knowledge:
 
         self.session.add(doc)
         self.session.commit()
+
+    def allowed_file(self):
+        # Split the filename into name and extension
+        _, extension = os.path.splitext(self.upload_file)
+        # Check if the extension (in lowercase) is in the allowed set
+        return extension.lower() in ALLOWED_EXTENSIONS

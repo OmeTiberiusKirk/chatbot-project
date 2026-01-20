@@ -33,8 +33,8 @@ async def ingest(session: SessionDep, file: UploadFile):
         if (extension[1:] == FileExt.MD.value):
             ingest_md()
         else:
-            ingest_pdf(file_path)
-        return {"content": "content"}
+            content = ingest_pdf(session, file_path)
+        return {"content": content}
     except HTTPException as e:
         raise HTTPException(
             status_code=e.status_code,
