@@ -20,9 +20,9 @@ from pgvector.sqlalchemy import Vector
 from typing import Literal
 
 
-class FileType(Enum):
+class FileExt(Enum):
     PDF = 'pdf'
-    DOC = 'doc'
+    MD = 'md'
 
 
 class Base(DeclarativeBase):
@@ -56,7 +56,7 @@ class Document(Base):
     def __init__(
         self,
         source: str,
-        source_type: Literal["pdf", "doc"],
+        source_type: Literal["pdf", "md"],
         checksum: str,
         chunks: Mapped[list["Chunk"]]
     ):
@@ -90,11 +90,11 @@ class Chunk(Base):
 
     # relationships
     document: Mapped["Document"] = relationship(back_populates="chunks")
-    # embedding: Mapped["Embedding"] = relationship(
-    #     back_populates="chunk",
-    #     uselist=False,
-    #     cascade="all, delete-orphan"
-    # )
+    embedding: Mapped["Embedding"] = relationship(
+        back_populates="chunk",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
 
     def __init__(
         self,
@@ -107,23 +107,23 @@ class Chunk(Base):
         self.token_count = token_count
 
 
-# class Embedding(Base):
-#     __tablename__ = "embeddings"
+class Embedding(Base):
+    __tablename__ = "embeddings"
 
-#     chunk_id: Mapped[str] = mapped_column(
-#         UUID(as_uuid=True),
-#         ForeignKey("chunks.chunk_id", ondelete="CASCADE"),
-#         primary_key=True
-#     )
+    chunk_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("chunks.chunk_id", ondelete="CASCADE"),
+        primary_key=True
+    )
 
-#     embedding: Mapped[list[float]] = mapped_column(
-#         Vector(1536)  # ปรับตาม model embedding
-#     )
+    embedding: Mapped[list[float]] = mapped_column(
+        Vector(1536)  # ปรับตาม model embedding
+    )
 
-#     created_at: Mapped[str] = mapped_column(
-#         TIMESTAMP(timezone=True),
-#         server_default=func.now()
-#     )
+    created_at: Mapped[str] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now()
+    )
 
-#     # relationships
-#     chunk: Mapped["Chunk"] = relationship(back_populates="embedding")
+    # relationships
+    chunk: Mapped["Chunk"] = relationship(back_populates="embedding")

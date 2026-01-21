@@ -1,15 +1,9 @@
 from fastapi import APIRouter, UploadFile, HTTPException, status
 from app.api.deps import SessionDep
-from app.services.knowledge import (
-    create_file,
-    allowed_file,
-    ALLOWED_EXTENSIONS,
-    FileExt,
-    ingest_md,
-    ingest_pdf
-)
+from app.services.knowledge import Knowledge, ALLOWED_EXTENSIONS
 from pathlib import Path
 import os
+from app.core.models import FileExt
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 UPLOAD_DIR = Path("uploads")
@@ -18,22 +12,23 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 @router.post("/ingest/")
 async def ingest(session: SessionDep, file: UploadFile):
-    file_path = UPLOAD_DIR / file.filename
-    _, extension = os.path.splitext(file.filename)
+    print(file.headers)
+    knl = Knowledge(session, file)
+    extension = knl.get_file_ext()
 
     try:
-        if not allowed_file(file.filename):
+        if not knl.allowed_file():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"File extension '{extension}' not allowed. Allowed are: {', '.join(ALLOWED_EXTENSIONS)}"
             )
 
-        await create_file(file_path, file)
+        await knl.create_file()
 
         if (extension[1:] == FileExt.MD.value):
-            ingest_md()
+            knl.ingest_md()
         else:
-            content = ingest_pdf(session, file_path)
+            content = knl.ingest_pdf()
         return {"content": content}
     except HTTPException as e:
         raise HTTPException(
