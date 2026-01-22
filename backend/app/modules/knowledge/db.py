@@ -29,4 +29,8 @@ def insert_document(
         self.session.add(doc)
         self.session.commit()
     except IntegrityError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.args[0])
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This document already exists.",
+        )
