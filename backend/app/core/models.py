@@ -1,7 +1,12 @@
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from uuid import uuid4
-from enum import Enum
+import enum
 from sqlalchemy import (
     String,
     Text,
@@ -10,12 +15,12 @@ from sqlalchemy import (
     TIMESTAMP,
     JSON,
     func,
+    Enum,
 )
 from pgvector.sqlalchemy import Vector
-from typing import Literal
 
 
-class FileExt(Enum):
+class FileExt(enum.Enum):
     PDF = "pdf"
     MD = "md"
 
@@ -31,25 +36,29 @@ class Document(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid4
     )
     source: Mapped[str] = mapped_column(String, nullable=False)
-    source_type: Mapped[str | None] = mapped_column(String(50))
-    checksum: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    source_type: Mapped[FileExt] = mapped_column(Enum(FileExt))
+    checksum: Mapped[str] = mapped_column(
+        String(64),
+        unique=True,
+        nullable=False,
+    )
     doc_metadata: Mapped[dict | None] = mapped_column(JSON)
     created_at: Mapped[str] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now()
     )
 
     # relationships
-    chunks: Mapped[list["Chunk"]] = relationship(
+    chunks: Mapped[list["ChunkModel"]] = relationship(
         back_populates="document", cascade="all, delete-orphan"
     )
 
     def __init__(
         self,
         source: str,
-        source_type: Literal["pdf", "md"],
+        source_type: FileExt,
         checksum: str,
         doc_metadata: dict,
-        chunks: Mapped[list["Chunk"]],
+        chunks: list["ChunkModel"],
     ):
         self.source = source
         self.source_type = source_type
@@ -58,7 +67,7 @@ class Document(Base):
         self.chunks = chunks
 
 
-class Chunk(Base):
+class ChunkModel(Base):
     __tablename__ = "chunks"
 
     chunk_id: Mapped[str] = mapped_column(
@@ -70,7 +79,11 @@ class Chunk(Base):
         index=True,
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    content_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    content_hash: Mapped[str] = mapped_column(
+        String(64),
+        unique=True,
+        nullable=False,
+    )
     token_count: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[str] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now()
@@ -79,10 +92,17 @@ class Chunk(Base):
     # relationships
     document: Mapped["Document"] = relationship(back_populates="chunks")
     embedding: Mapped["Embedding"] = relationship(
-        back_populates="chunk", uselist=False, cascade="all, delete-orphan"
+        back_populates="chunk",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
 
-    def __init__(self, content: str, content_hash: str, token_count: int | None):
+    def __init__(
+        self,
+        content: str,
+        content_hash: str,
+        token_count: int | None,
+    ):
         self.content = content
         self.content_hash = content_hash
         self.token_count = token_count
@@ -106,4 +126,4 @@ class Embedding(Base):
     )
 
     # relationships
-    chunk: Mapped["Chunk"] = relationship(back_populates="embedding")
+    chunk: Mapped["ChunkModel"] = relationship(back_populates="embedding")
