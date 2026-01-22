@@ -23,4 +23,5 @@ dependencies = [
     "psutil>=7.2.1",
     "torch==2.2.2",
     "python-multipart>=0.0.21",
+    "tiktoken>=0.12.0",
 ]

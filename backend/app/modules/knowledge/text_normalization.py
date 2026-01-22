@@ -99,23 +99,3 @@ def thai_sentence_split(text: str):
     if buffer.strip():
         out.append(buffer.strip())
     return out
-
-
-def crop_content_only(cv_img):
-    # 1. กลับสีภาพ (ให้พื้นหลังเป็นดำ ตัวอักษรเป็นขาว เพื่อหาขอบเขต)
-    inverted = cv2.bitwise_not(cv_img)
-
-    # 2. หาจุดที่มีสีขาว (ซึ่งก็คือตัวหนังสือ)
-    points = cv2.findNonZero(inverted)
-
-    # 3. สร้างสี่เหลี่ยมล้อมรอบจุดทั้งหมด
-    x, y, w, h = cv2.boundingRect(points)
-
-    # 4. Crop โดยเผื่อขอบ (Padding) ไว้สัก 20-40 pixels ไม่ให้ชิดเกินไป
-    padding = 30
-    crop = cv_img[
-        max(0, y - padding) : min(cv_img.shape[0], y + h + padding),
-        max(0, x - padding) : min(cv_img.shape[1], x + w + padding),
-    ]
-
-    return crop

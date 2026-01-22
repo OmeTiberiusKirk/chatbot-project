@@ -5,6 +5,7 @@ from app.modules.knowledge.text_normalization import thai_sentence_split
 from fastapi import UploadFile
 from typing import cast
 from app.modules.knowledge.main import Ingestion
+import tiktoken
 
 
 ALLOWED_EXTENSIONS = {"md", "pdf"}
@@ -66,3 +67,10 @@ def chunk_texts(pages: list[tuple[int, str]]) -> list[tuple[int, str]]:
 
             i += CHUNK_SIZE - CHUNK_OVERLAP
     return chunks
+
+
+enc = tiktoken.get_encoding("cl100k_base")
+
+
+def count_tokens(text: str) -> int:
+    return len(enc.encode(text))

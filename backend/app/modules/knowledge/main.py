@@ -1,13 +1,11 @@
-from fastapi import UploadFile, Form, HTTPException, status
+from fastapi import UploadFile, Form
 from pypdf import PdfReader
-from app.core.models import Document, ChunkModel
 from app.api.deps import SessionDep
 from pathlib import Path
 from typing import BinaryIO
 from types import MethodType
 from app.api.deps import SessionDep
 from typing import Annotated
-from sqlalchemy.exc import IntegrityError
 
 POPPLER_PATH = "C:/Users/stron/Downloads/poppler-25.12.0/Library/bin"
 UPLOAD_DIR = Path("uploads")
@@ -41,45 +39,20 @@ class Ingestion(KnowledgeService):
         self.file = upload_file.file
         self.doc_meta = {"agency": agency, "year": year}
 
+        # bind related functions
         from app.modules.knowledge.image_processing import read_pdf_with_ocr
         from app.modules.knowledge.document import (
             get_file_ext,
             create_file,
             allowed_file,
         )
+        from app.modules.knowledge.db import insert_document
 
-        # bind related functions
         self.read_pdf_with_ocr = MethodType(read_pdf_with_ocr, self)
         self.get_file_ext = MethodType(get_file_ext, self)
         self.create_file = MethodType(create_file, self)
         self.allowed_file = MethodType(allowed_file, self)
-
-    def insert_document(
-        self,
-        checksum: str,
-        chunks: list[tuple[int, str]],
-    ) -> None:
-        from app.modules.knowledge.document import hash_text
-
-        try:
-            doc = Document(
-                source=f"{self.file_path}",
-                source_type=self.get_file_ext(),
-                checksum=checksum,
-                doc_metadata=self.doc_meta,
-                chunks=[
-                    ChunkModel(
-                        content=chunk[1],
-                        content_hash=hash_text(chunk[1]),
-                        token_count=1,
-                    )
-                    for chunk in chunks
-                ],
-            )
-            self.session.add(doc)
-            self.session.commit()
-        except IntegrityError as e:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.args[0])
+        self.insert_document = MethodType(insert_document, self)
 
     def ingest_md(self) -> None:
         print("ingest markdown")
