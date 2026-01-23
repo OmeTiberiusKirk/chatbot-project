@@ -6,6 +6,7 @@ from app.core.models import FileExt
 from pydantic import BaseModel
 from app.modules.knowledge.ollama import ollama_embed
 from app.api.deps import SessionDep
+from app.modules.knowledge.db import search_candidate
 
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
@@ -41,5 +42,6 @@ class Question(BaseModel):
 async def ingest(session: SessionDep, q: Question) -> dict:
     print(q.text)
     emb = await ollama_embed(q.text)
-    print(emb)
+    search_candidate(session)
+
     return {"msg": emb}

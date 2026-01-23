@@ -1,5 +1,6 @@
 from app.core.models import Document, ChunkModel, EmbeddingModel
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 from fastapi import HTTPException, status
 from app.modules.knowledge.main import Ingestion
 from app.modules.knowledge.document import count_tokens
@@ -43,8 +44,10 @@ def insert_document(
         )
 
 
-def search_candidate(session: SessionDep, emb: list[float]):
-    pass
+def search_candidate(session: SessionDep, emb: list[float] = None):
+    rows = session.exec(select(EmbeddingModel))
+    # for row in rows:
+    #     print(row[0])
 
 
 def to_pgvector(vec):
