@@ -52,7 +52,7 @@ def chunk_texts(pages: list[tuple[int, str]]) -> list[tuple[int, str]]:
         words = " ".join(sentences).split()
         i = 0
         while i < len(words):
-            chunk_words = words[i : i + CHUNK_SIZE]
+            chunk_words = words[i: i + CHUNK_SIZE]
             chunk_text = " ".join(chunk_words).strip()
 
             if chunk_text:

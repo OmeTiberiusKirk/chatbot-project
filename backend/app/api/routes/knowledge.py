@@ -3,6 +3,9 @@ from app.modules.knowledge.main import Ingestion
 from app.modules.knowledge.document import ALLOWED_EXTENSIONS
 from pathlib import Path
 from app.core.models import FileExt
+from pydantic import BaseModel
+from app.modules.knowledge.ollama import ollama_embed
+from app.api.deps import SessionDep
 
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
@@ -28,3 +31,15 @@ async def ingest(ingestion: Ingestion = Depends(Ingestion)) -> dict:
         content = await ingestion.ingest_pdf()
 
     return {"msg": content}
+
+
+class Question(BaseModel):
+    text: str
+
+
+@router.post("/asking/")
+async def ingest(session: SessionDep, q: Question) -> dict:
+    print(q.text)
+    emb = await ollama_embed(q.text)
+    print(emb)
+    return {"msg": emb}

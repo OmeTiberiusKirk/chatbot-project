@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 from app.modules.knowledge.main import Ingestion
 from app.modules.knowledge.document import count_tokens
+from app.api.deps import SessionDep
 
 
 def insert_document(
@@ -40,6 +41,10 @@ def insert_document(
             status_code=status.HTTP_409_CONFLICT,
             detail="This document already exists.",
         )
+
+
+def search_candidate(session: SessionDep, emb: list[float]):
+    pass
 
 
 def to_pgvector(vec):
