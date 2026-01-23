@@ -6,6 +6,8 @@ from typing import BinaryIO
 from types import MethodType
 from app.api.deps import SessionDep
 from typing import Annotated
+from app.modules.knowledge.ollama import ollama_embed
+
 
 POPPLER_PATH = "C:/Users/stron/Downloads/poppler-25.12.0/Library/bin"
 UPLOAD_DIR = Path("uploads")
@@ -60,7 +62,7 @@ class Ingestion(KnowledgeService):
             content = self.file.read()
             print(content)
 
-    def ingest_pdf(self):
+    async def ingest_pdf(self):
         from app.modules.knowledge.document import sha256_bytes, chunk_texts
         from app.modules.knowledge.text_normalization import clean_thai_text
 
@@ -75,5 +77,12 @@ class Ingestion(KnowledgeService):
                 pages.append((pageno, t))
 
             chunks = chunk_texts(pages)
-            self.insert_document(checksum, chunks)
+
+            # embed chunks
+            embeddings: list[list[float]] = []
+            for _, chunk in chunks:
+                emb = await ollama_embed(chunk)
+                embeddings.append(emb)
+
+            self.insert_document(checksum, chunks, embeddings)
             return chunks

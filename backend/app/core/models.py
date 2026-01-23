@@ -85,13 +85,14 @@ class ChunkModel(Base):
         nullable=False,
     )
     token_count: Mapped[int | None] = mapped_column(Integer)
+    chunk_index: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[str] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now()
     )
 
     # relationships
     document: Mapped["Document"] = relationship(back_populates="chunks")
-    embedding: Mapped["Embedding"] = relationship(
+    embedding: Mapped["EmbeddingModel"] = relationship(
         back_populates="chunk",
         uselist=False,
         cascade="all, delete-orphan",
@@ -102,13 +103,17 @@ class ChunkModel(Base):
         content: str,
         content_hash: str,
         token_count: int | None,
+        chunk_index: int,
+        embedding: "EmbeddingModel"
     ):
         self.content = content
         self.content_hash = content_hash
         self.token_count = token_count
+        self.chunk_index = chunk_index
+        self.embedding = embedding
 
 
-class Embedding(Base):
+class EmbeddingModel(Base):
     __tablename__ = "embeddings"
 
     chunk_id: Mapped[str] = mapped_column(
@@ -118,12 +123,11 @@ class Embedding(Base):
     )
 
     embedding: Mapped[list[float]] = mapped_column(
-        Vector(1536)  # ปรับตาม model embedding
-    )
-
-    created_at: Mapped[str] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=func.now()
+        Vector(768)  # ปรับตาม model embedding
     )
 
     # relationships
     chunk: Mapped["ChunkModel"] = relationship(back_populates="embedding")
+
+    def __init__(self, embedding: list[float]):
+        self.embedding = embedding

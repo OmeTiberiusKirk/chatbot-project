@@ -25,6 +25,6 @@ async def ingest(ingestion: Ingestion = Depends(Ingestion)) -> dict:
     if ext == FileExt.MD:
         ingestion.ingest_md()
     else:
-        content = ingestion.ingest_pdf()
+        content = await ingestion.ingest_pdf()
 
     return {"msg": content}
