@@ -4,9 +4,13 @@ from app.modules.knowledge.document import ALLOWED_EXTENSIONS
 from pathlib import Path
 from app.core.models import FileExt
 from pydantic import BaseModel
-from app.modules.knowledge.ollama import ollama_embed
+from app.modules.knowledge.ollama import (
+    ollama_embed,
+    OllamaMetadataExtractor,
+    answer_question,
+)
 from app.api.deps import SessionDep
-from app.modules.knowledge.db import search_candidate
+from app.modules.knowledge.db import search_candidates
 
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
@@ -39,9 +43,20 @@ class Question(BaseModel):
 
 
 @router.post("/asking/")
-async def ingest(session: SessionDep, q: Question) -> dict:
-    print(q.text)
+async def ingest(
+    session: SessionDep,
+    q: Question,
+    extractor: OllamaMetadataExtractor = Depends(OllamaMetadataExtractor),
+) -> dict:
     emb = await ollama_embed(q.text)
-    search_candidate(session)
+    metadata = await extractor.extract(q)
+    candidates = search_candidates(session, emb, metadata)
 
-    return {"msg": emb}
+    print("\n--- Retrieved Chunks ---")
+    for c in candidates:
+        print(c["score"])
+        print(c["text"][:200], "\n")
+
+    ans = await answer_question(q, candidates)
+    print(ans)
+    return {"msg": q.text}

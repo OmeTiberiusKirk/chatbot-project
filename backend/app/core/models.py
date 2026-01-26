@@ -13,11 +13,11 @@ from sqlalchemy import (
     Integer,
     ForeignKey,
     TIMESTAMP,
-    JSON,
     func,
     Enum,
 )
 from pgvector.sqlalchemy import Vector
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 class FileExt(enum.Enum):
@@ -42,7 +42,7 @@ class Document(Base):
         unique=True,
         nullable=False,
     )
-    doc_metadata: Mapped[dict | None] = mapped_column(JSON)
+    doc_metadata: Mapped[dict | None] = mapped_column(JSONB)
     created_at: Mapped[str] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now()
     )
@@ -104,7 +104,7 @@ class ChunkModel(Base):
         content_hash: str,
         token_count: int | None,
         chunk_index: int,
-        embedding: "EmbeddingModel"
+        embedding: "EmbeddingModel",
     ):
         self.content = content
         self.content_hash = content_hash
