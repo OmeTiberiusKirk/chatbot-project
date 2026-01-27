@@ -49,7 +49,7 @@ async def ingest(
     extractor: OllamaMetadataExtractor = Depends(OllamaMetadataExtractor),
 ) -> dict:
     emb = await ollama_embed(q.text)
-    metadata = await extractor.extract(q)
+    metadata = await extractor.extract(q.text)
     candidates = search_candidates(session, emb, metadata)
 
     print("\n--- Retrieved Chunks ---")
@@ -57,6 +57,6 @@ async def ingest(
         print(c["score"])
         print(c["text"][:200], "\n")
 
-    ans = await answer_question(q, candidates)
+    ans = await answer_question(q.text, candidates)
     print(ans)
     return {"msg": q.text}

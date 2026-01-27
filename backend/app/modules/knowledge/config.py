@@ -8,9 +8,10 @@ METADATA_PROMPT = """
     You are an NLP system that extracts structured metadata from a user question.
     Return ONLY valid JSON.
     No markdown.
+    Thai langquage
         
     Fields:
-    - agency: Government agencies
+    - agency: organization or university
     - year: Year of document
 
     Rules:

@@ -69,13 +69,13 @@ def search_candidates(
 ):
     stmt = text(
         """
-        select ch.content, d.doc_metadata, 1 - (emb.embedding <=> cast(:emb AS vector)) AS score
-        from embeddings as emb
-        join chunks as ch on ch.chunk_id = emb.chunk_id
-        join documents as d on d.document_id = ch.document_id
-        where d.doc_metadata @> :meta
-        order by score desc
-        limit :top_k
+    select ch.content, d.doc_metadata, 1 - (emb.embedding <=> cast(:emb AS vector)) AS score
+    from embeddings as emb
+    join chunks as ch on ch.chunk_id = emb.chunk_id
+    join documents as d on d.document_id = ch.document_id
+    where d.doc_metadata @> :meta
+    order by score desc
+    limit :top_k
     """
     )
 

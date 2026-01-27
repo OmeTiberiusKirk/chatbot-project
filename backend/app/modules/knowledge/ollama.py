@@ -36,13 +36,15 @@ async def ollama_generate(prompt: str, model=LLM_MODEL):
             {"role": "system", "content": "คุณเป็นผู้ช่วยที่ตอบเป็นภาษาไทยเท่านั้น"},
             {"role": "user", "content": prompt},
         ]
-        resp = ollama.chat(model=model, messages=messages)
-        return resp.message
-        # return ollama.generate(model=model, prompt=prompt)
+        r = ollama.generate(model=model, prompt=prompt)
+        return r.response
+        # resp = ollama.chat(model=model, messages=messages)
+        # return resp.message
 
     loop = asyncio.get_event_loop()
     resp = await loop.run_in_executor(_executor, _run)
-    return resp.get("content") or ""
+    # return resp.get("content") or ""
+    return resp
 
 
 class QuestionMetadata(BaseModel):
@@ -58,7 +60,6 @@ class OllamaMetadataExtractor:
         prompt = METADATA_PROMPT.format(question=question)
         raw = await ollama_generate(prompt)
         clean = raw.replace("```json", "").replace("```", "").strip()
-
         try:
             data = json.loads(clean)
             return QuestionMetadata(**data)
@@ -73,14 +74,26 @@ async def answer_question(question, top_chunks):
     context = "\n\n---\n\n".join([f"{c['text']}" for c in top_chunks])
 
     prompt = f"""
-    - ตอบจากข้อมูลที่ให้เท่านั้น
-    - ถ้าไม่มีข้อมูล ให้ตอบว่า "ไม่พบข้อมูลในเอกสาร"
-    - ห้ามเดา ห้ามสรุปเกินข้อมูล
+    คุณเป็นผู้ช่วยที่ตอบคำถามโดยอ้างอิงจากข้อมูลที่ให้มาเท่านั้น
 
-    CONTEXT:
+    ข้อบังคับ:
+    - ตอบเป็นภาษาไทยทั้งหมด
+    - ใช้ภาษาสุภาพ ชัดเจน และเป็นทางการ
+    - ห้ามเดา หรือแต่งข้อมูลเพิ่มจากความรู้ภายนอก
+    - หากข้อมูลใน Context ไม่เพียงพอ ให้ตอบว่า "ไม่พบข้อมูลในเอกสาร"
+    - อนุญาตให้ใช้ศัพท์เทคนิคภาษาอังกฤษได้เฉพาะกรณีจำเป็น และต้องอธิบายเป็นภาษาไทย
+
+    รูปแบบคำตอบ:
+    - ตอบให้ตรงคำถาม
+    - หากมีหลายประเด็น ให้ตอบเป็นข้อ ๆ
+    
+    ### Context
     {context}
 
-    QUESTION:
+    ### Question
     {question}
+
+    ### Answer (ตอบเป็นภาษาไทย):
     """
+    print(prompt)
     return (await ollama_generate(prompt)).strip()
