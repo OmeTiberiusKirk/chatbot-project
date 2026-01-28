@@ -59,4 +59,4 @@ async def ingest(
 
     ans = await answer_question(q.text, candidates)
     print(ans)
-    return {"msg": q.text}
+    return {"msg": metadata}

@@ -1,23 +1,25 @@
 EMBED_MODEL = "nomic-embed-text"
-LLM_MODEL = "qwen2.5"
+LLM_MODEL = "qwen2.5:14b"
 ALPHA = 0.6
 TOP_K = 5
 CANDIDATE_MULT = 4
 NOT_FOUND_THRESHOLD = 0.12
 METADATA_PROMPT = """
-    You are an NLP system that extracts structured metadata from a user question.
-    Return ONLY valid JSON.
-    No markdown.
-    Thai langquage
-        
-    Fields:
-    - agency: organization or university
-    - year: Year of document
+คุณเป็นระบบประมวลผลภาษาธรรมชาติ (NLP) ที่ทำหน้าที่สกัดข้อมูลเมตาดาตาเชิงโครงสร้างจากคำถามของผู้ใช้
 
-    Rules:
-    - Only extract what is explicitly stated or clearly implied
-    - If missing, use null or empty array
+ข้อบังคับ:
+- ต้องตอบกลับเป็น JSON ที่ถูกต้องเท่านั้น
+- ห้ามใช้ markdown
+- ห้ามอธิบายเพิ่มเติมนอกเหนือจาก JSON
 
-    Question:
-    \"\"\"{question}\"\"\"
+ฟิลด์ที่ต้องสกัด:
+- agency: ชื่อหน่วยงาน องค์กร หรือมหาวิทยาลัย
+- year: ปีของเอกสาร (ค.ศ.)
+
+กติกา:
+- สกัดเฉพาะข้อมูลที่ระบุไว้อย่างชัดเจน หรืออนุมานได้อย่างสมเหตุสมผลจากคำถาม
+- หากไม่มีข้อมูล ให้ใช้ค่า null
+
+คำถาม:
+\"\"\"{question}\"\"\"
 """

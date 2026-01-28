@@ -45,23 +45,6 @@ def insert_document(
         )
 
 
-# def search_candidate(session: SessionDep, emb: list[float]):
-#     assert isinstance(emb, list)
-#     assert all(isinstance(x, float) for x in emb)
-#     assert len(emb) == 768
-#     stmt = (
-#         select(
-#             (1 - EmbeddingModel.embedding.op("<=>")(
-#                 cast(bindparam("emb"), Vector(len(emb)))
-#             )).label("score")
-#         )
-#         .select_from(EmbeddingModel)
-#         .limit(10)
-#     )
-
-#     session.scalars(stmt, {"emb": emb})
-
-
 def search_candidates(
     session: SessionDep,
     emb: list[float],

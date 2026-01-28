@@ -57,14 +57,17 @@ class OllamaMetadataExtractor:
         pass
 
     async def extract(self, question: str) -> QuestionMetadata:
-        prompt = METADATA_PROMPT.format(question=question)
-        raw = await ollama_generate(prompt)
-        clean = raw.replace("```json", "").replace("```", "").strip()
         try:
+            prompt = METADATA_PROMPT.format(question=question)
+            raw = await ollama_generate(prompt)
+            clean = raw.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean)
-            return QuestionMetadata(**data)
+            print(data["year"] + 543)
+            return QuestionMetadata(year=data["year"] + 543, agency=data["agency"])
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON from Ollama: {raw}")
+        except Exception as e:
+            raise ValueError(e)
 
 
 async def answer_question(question, top_chunks):
