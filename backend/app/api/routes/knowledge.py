@@ -43,7 +43,7 @@ class Question(BaseModel):
 
 
 @router.post("/asking/")
-async def ingest(
+async def asking(
     session: SessionDep,
     q: Question,
     extractor: OllamaMetadataExtractor = Depends(OllamaMetadataExtractor),

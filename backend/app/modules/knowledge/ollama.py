@@ -9,6 +9,7 @@ from app.modules.knowledge.config import (
     NOT_FOUND_THRESHOLD,
 )
 import json
+from fastapi import HTTPException, status
 
 
 # -----------------------------
@@ -19,7 +20,13 @@ _executor = ThreadPoolExecutor()
 
 async def ollama_embed(text: str, model=EMBED_MODEL) -> list[float]:
     def _run():
-        return ollama.embed(model=model, input=text)
+        try:
+            return ollama.embed(model=model, input=text)
+        except ConnectionError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=e.__str__(),
+            )
 
     loop = asyncio.get_event_loop()
     resp = await loop.run_in_executor(_executor, _run)
@@ -66,8 +73,11 @@ class OllamaMetadataExtractor:
             return QuestionMetadata(year=data["year"] + 543, agency=data["agency"])
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON from Ollama: {raw}")
-        except Exception as e:
-            raise ValueError(e)
+        except ollama.ResponseError as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=e.__str__()
+            )
 
 
 async def answer_question(question, top_chunks):
