@@ -39,14 +39,8 @@ async def ollama_embed(text: str, model=EMBED_MODEL) -> list[float]:
 
 async def ollama_generate(prompt: str, model=LLM_MODEL):
     def _run():
-        messages = [
-            {"role": "system", "content": "คุณเป็นผู้ช่วยที่ตอบเป็นภาษาไทยเท่านั้น"},
-            {"role": "user", "content": prompt},
-        ]
         r = ollama.generate(model=model, prompt=prompt)
         return r.response
-        # resp = ollama.chat(model=model, messages=messages)
-        # return resp.message
 
     loop = asyncio.get_event_loop()
     resp = await loop.run_in_executor(_executor, _run)
@@ -70,7 +64,7 @@ class OllamaMetadataExtractor:
             clean = raw.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean)
             print(data["year"] + 543)
-            return QuestionMetadata(year=data["year"] + 543, agency=data["agency"])
+            return QuestionMetadata(year=data["year"], agency=data["agency"])
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON from Ollama: {raw}")
         except ollama.ResponseError as e:

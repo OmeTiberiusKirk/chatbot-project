@@ -6,11 +6,27 @@ from fastapi import UploadFile
 from typing import cast
 from app.modules.knowledge.main import Ingestion
 import tiktoken
+from pypdf import PdfReader
+from app.modules.knowledge.text_normalization import clean_thai_text
 
 
 ALLOWED_EXTENSIONS = {"md", "pdf"}
 CHUNK_SIZE = 400
 CHUNK_OVERLAP = 60
+
+
+def extract_text_from_pdf(self: Ingestion) -> tuple[list[tuple[int, str]], str]:
+    with open(self.file_path, "rb") as b:
+        checksum = sha256_bytes(b.read())
+        reader = PdfReader(b)
+        pages: list[tuple[int, str]] = []
+
+        for pageno, page in enumerate(reader.pages):
+            t = page.extract_text() or ""
+            t = clean_thai_text(t)
+            pages.append((pageno, t))
+
+        return pages, checksum
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -36,7 +52,7 @@ async def create_file(self: Ingestion) -> None:
         buffer.write(content)
 
 
-def allowed_file(self: Ingestion):
+def allowed_file(self: Ingestion) -> bool:
     # Split the filename into name and extension
     ext = get_file_ext(self)
     # Check if the extension (in lowercase) is in the allowed set

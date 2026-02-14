@@ -1,5 +1,5 @@
 EMBED_MODEL = "nomic-embed-text"
-LLM_MODEL = "qwen2.5:14b"
+LLM_MODEL = "qwen2.5"
 ALPHA = 0.6
 TOP_K = 5
 CANDIDATE_MULT = 4

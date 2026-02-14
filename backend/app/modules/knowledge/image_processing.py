@@ -13,7 +13,7 @@ CONFIG = r"""
 """
 
 
-def read_pdf_with_ocr(self: Ingestion):
+def read_pdf_with_ocr(self: Ingestion) -> list[tuple[int, str]]:
     print("Converting PDF to images...")
     pages = convert_from_path(
         self.file_path,
@@ -25,7 +25,8 @@ def read_pdf_with_ocr(self: Ingestion):
     print(f"This machine has {cores} cores")
 
     with Pool(processes=cores) as pool:
-        result = pool.map(process_image, [(i, page) for i, page in enumerate(pages)])
+        result = pool.map(process_image, [(i, page)
+                          for i, page in enumerate(pages)])
         result = sorted(result, key=lambda r: r[0])
         return " ".join([page for _, page in result])
 
@@ -98,8 +99,8 @@ def crop_content_only(cv_img):
     # 4. Crop โดยเผื่อขอบ (Padding) ไว้สัก 20-40 pixels ไม่ให้ชิดเกินไป
     padding = 30
     crop = cv_img[
-        max(0, y - padding) : min(cv_img.shape[0], y + h + padding),
-        max(0, x - padding) : min(cv_img.shape[1], x + w + padding),
+        max(0, y - padding): min(cv_img.shape[0], y + h + padding),
+        max(0, x - padding): min(cv_img.shape[1], x + w + padding),
     ]
 
     return crop
