@@ -32,13 +32,13 @@ class Ingestion:
         self.doc_meta = {"agency": agency, "year": year}
 
         # bind related functions
-        from app.modules.knowledge.document import extract_text_from_pdf
         from app.modules.knowledge.image_processing import read_pdf_with_ocr
         from app.modules.knowledge.db import insert_document
         from app.modules.knowledge.document import (
             get_file_ext,
             create_file,
             allowed_file,
+            extract_text_from_pdf,
         )
 
         self.extract_text_from_pdf = MethodType(extract_text_from_pdf, self)
@@ -58,6 +58,7 @@ class Ingestion:
         from app.modules.knowledge.document import chunk_texts
 
         pages, checksum = self.extract_text_from_pdf()
+        # await extract_metadata_from_text("".join([page for _, page in pages]))
         chunks = chunk_texts(pages)
 
         # embed chunks

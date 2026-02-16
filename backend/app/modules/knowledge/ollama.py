@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from app.modules.knowledge.config import (
     EMBED_MODEL,
     LLM_MODEL,
-    METADATA_PROMPT,
     NOT_FOUND_THRESHOLD,
 )
 import json
@@ -59,18 +58,37 @@ class OllamaMetadataExtractor:
 
     async def extract(self, question: str) -> QuestionMetadata:
         try:
+            METADATA_PROMPT = """
+            คุณเป็นระบบประมวลผลภาษาธรรมชาติ (NLP) ที่ทำหน้าที่สกัดข้อมูลเมตาดาตาเชิงโครงสร้างจากคำถามของผู้ใช้
+
+            ข้อบังคับ:
+            - ต้องตอบกลับเป็น JSON ที่ถูกต้องเท่านั้น
+            - ห้ามใช้ markdown
+            - ห้ามอธิบายเพิ่มเติมนอกเหนือจาก JSON
+
+            ฟิลด์ที่ต้องสกัด:
+            - agency: ชื่อหน่วยงาน องค์กร หรือมหาวิทยาลัย
+            - year: ปีของเอกสาร (พ.ศ.)
+
+            กติกา:
+            - สกัดเฉพาะข้อมูลที่ระบุไว้อย่างชัดเจน หรืออนุมานได้อย่างสมเหตุสมผลจากคำถาม
+            - หากไม่มีข้อมูล ให้ใช้ค่า null
+
+            คำถาม:
+            \"\"\"{question}\"\"\"
+            """
+
             prompt = METADATA_PROMPT.format(question=question)
             raw = await ollama_generate(prompt)
+            print(raw)
             clean = raw.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean)
-            print(data["year"] + 543)
             return QuestionMetadata(year=data["year"], agency=data["agency"])
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON from Ollama: {raw}")
         except ollama.ResponseError as e:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=e.__str__()
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=e.__str__()
             )
 
 
@@ -102,5 +120,4 @@ async def answer_question(question, top_chunks):
 
     ### Answer (ตอบเป็นภาษาไทย):
     """
-    print(prompt)
     return (await ollama_generate(prompt)).strip()

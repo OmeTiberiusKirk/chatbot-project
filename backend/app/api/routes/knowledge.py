@@ -59,4 +59,4 @@ async def asking(
 
     ans = await answer_question(q.text, candidates)
     print(ans)
-    return {"msg": metadata}
+    return {"content": ans}

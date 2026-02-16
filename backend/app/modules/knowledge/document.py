@@ -8,7 +8,9 @@ from app.modules.knowledge.main import Ingestion
 import tiktoken
 from pypdf import PdfReader
 from app.modules.knowledge.text_normalization import clean_thai_text
-
+from app.modules.knowledge.schemas import DocumentMetadata
+import ollama
+from app.modules.knowledge.config import LLM_MODEL
 
 ALLOWED_EXTENSIONS = {"md", "pdf"}
 CHUNK_SIZE = 400
@@ -27,6 +29,38 @@ def extract_text_from_pdf(self: Ingestion) -> tuple[list[tuple[int, str]], str]:
             pages.append((pageno, t))
 
         return pages, checksum
+
+
+async def extract_metadata_from_text(text: str) -> DocumentMetadata:
+    messages = [
+        {
+            "role": "system",
+            "content": "คุณคือระบบที่ตอบเป็น JSON เท่านั้น ห้ามอธิบาย",
+        },
+        {
+            "role": "user",
+            "content": f"""
+            สกัด metadata จากข้อความต่อไปนี้
+
+            ตอบเป็น JSON เท่านั้น
+            {{
+                "agency": null,
+                "year": null,
+                "document_type": null
+            }}
+
+            ข้อความ:
+            {text}
+            """,
+        },
+    ]
+    print(messages)
+    r = ollama.chat(
+        messages=messages,
+        format="json",
+        model=LLM_MODEL,
+    )
+    print(r.message.content)
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -68,7 +102,7 @@ def chunk_texts(pages: list[tuple[int, str]]) -> list[tuple[int, str]]:
         words = " ".join(sentences).split()
         i = 0
         while i < len(words):
-            chunk_words = words[i: i + CHUNK_SIZE]
+            chunk_words = words[i : i + CHUNK_SIZE]
             chunk_text = " ".join(chunk_words).strip()
 
             if chunk_text:
