@@ -1,7 +1,9 @@
 from collections.abc import Generator
 from typing import Annotated
 from fastapi import Depends
-from sqlmodel import Session
+
+# from sqlmodel import Session
+from sqlalchemy.orm import Session
 
 from app.core.db import engine
 

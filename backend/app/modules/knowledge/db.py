@@ -1,13 +1,12 @@
 from app.core.models import Document, ChunkModel, EmbeddingModel
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import text
+from sqlalchemy import text, select
 from fastapi import HTTPException, status
 from app.modules.knowledge.main import Ingestion
 from app.modules.knowledge.document import count_tokens
 from app.api.deps import SessionDep
 from app.modules.knowledge.config import TOP_K
 from app.modules.knowledge.schemas import DocumentMetadata
-import json
 
 
 def insert_document(
@@ -61,12 +60,6 @@ def search_candidates(
     limit :top_k
     """
     )
-    params = {
-        # "emb": emb,
-        # "top_k": TOP_K,
-        "meta": json.dumps({k: v for k, v in meta if v is not None}),
-    }
-    # print(params)
 
     rows = session.exec(
         statement=stmt,
@@ -83,6 +76,16 @@ def search_candidates(
         candidates.append({"text": t, "meta": m, "score": s})
 
     return candidates
+
+
+def find_all(session: SessionDep):
+    stmt = select(Document)
+    rows: list[Document] = session.scalars(statement=stmt)
+    documents: list[Document] = []
+    for row in rows:
+        documents.append(Document(document_id=row.document_id))
+    return documents
+    # return rows
 
 
 def to_pgvector(vec):

@@ -10,7 +10,11 @@ from app.modules.knowledge.ollama import (
     answer_question,
 )
 from app.api.deps import SessionDep
-from app.modules.knowledge.db import search_candidates
+from app.modules.knowledge.db import search_candidates, find_all
+import json
+import asyncio
+from fastapi.responses import StreamingResponse
+from app.core.models import Document
 
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
@@ -42,15 +46,29 @@ class Question(BaseModel):
     text: str
 
 
+async def message_generator(text: str):
+    for i in range((len(text))):
+        # Simulate some asynchronous work or delay
+        await asyncio.sleep(0.05)
+        # Yield the message chunk, formatted as JSON with a newline for clarity
+        yield text[i]
+
+
 @router.post("/asking/")
 async def asking(
     session: SessionDep,
-    q: Question,
+    q: str,
     extractor: OllamaMetadataExtractor = Depends(OllamaMetadataExtractor),
 ) -> dict:
-    # emb = await ollama_embed(q.text)
-    metadata = await extractor.extract(q.text)
+    metadata = await extractor.extract(q)
     print(metadata)
+    if metadata.intent == "search":
+        msg = "ตอนนี้เอกสาร tor มีจำนวนมากรบกวนช่วยระบุปี และชื่อหน่วยงาน"
+
+        return {}
+        # return StreamingResponse(message_generator(msg), media_type="application/json")
+
+    # emb = await ollama_embed(q.text)
     # candidates = search_candidates(session, emb, metadata)
 
     # print("\n--- Retrieved Chunks ---")

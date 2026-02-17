@@ -52,19 +52,19 @@ class Document(Base):
         back_populates="document", cascade="all, delete-orphan"
     )
 
-    def __init__(
-        self,
-        source: str,
-        source_type: FileExt,
-        checksum: str,
-        doc_metadata: dict,
-        chunks: list["ChunkModel"],
-    ):
-        self.source = source
-        self.source_type = source_type
-        self.checksum = checksum
-        self.doc_metadata = doc_metadata
-        self.chunks = chunks
+    # def __init__(
+    #     self,
+    #     source: str,
+    #     source_type: FileExt,
+    #     checksum: str,
+    #     doc_metadata: dict,
+    #     chunks: list["ChunkModel"],
+    # ):
+    #     self.source = source
+    #     self.source_type = source_type
+    #     self.checksum = checksum
+    #     self.doc_metadata = doc_metadata
+    #     self.chunks = chunks
 
 
 class ChunkModel(Base):

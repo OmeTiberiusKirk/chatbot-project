@@ -1,5 +1,5 @@
 EMBED_MODEL = "nomic-embed-text"
-LLM_MODEL = "qwen2.5"
+LLM_MODEL = "qwen2.5:14b"
 ALPHA = 0.6
 TOP_K = 5
 CANDIDATE_MULT = 4
@@ -21,7 +21,7 @@ Return EXACTLY this JSON structure:
 }}
 
 Field rules:
-- agency: extract only if explicitly mentioned
+- agency: Name of the agency, organization, or university.
 - year: Buddhist year (พ.ศ.) as number if mentioned
 - intent MUST be inferred from the question wording
 
