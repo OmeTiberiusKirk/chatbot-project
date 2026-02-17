@@ -6,7 +6,7 @@ from app.modules.knowledge.main import Ingestion
 from app.modules.knowledge.document import count_tokens
 from app.api.deps import SessionDep
 from app.modules.knowledge.config import TOP_K
-from app.modules.knowledge.ollama import QuestionMetadata
+from app.modules.knowledge.schemas import DocumentMetadata
 import json
 
 
@@ -48,7 +48,7 @@ def insert_document(
 def search_candidates(
     session: SessionDep,
     emb: list[float],
-    meta: QuestionMetadata,
+    meta: DocumentMetadata,
 ):
     stmt = text(
         """
@@ -56,18 +56,25 @@ def search_candidates(
     from embeddings as emb
     join chunks as ch on ch.chunk_id = emb.chunk_id
     join documents as d on d.document_id = ch.document_id
-    where d.doc_metadata @> :meta
+    where d.doc_metadata->>'agency' like :agency
     order by score desc
     limit :top_k
     """
     )
+    params = {
+        # "emb": emb,
+        # "top_k": TOP_K,
+        "meta": json.dumps({k: v for k, v in meta if v is not None}),
+    }
+    # print(params)
 
     rows = session.exec(
         statement=stmt,
         params={
             "emb": emb,
             "top_k": TOP_K,
-            "meta": json.dumps({k: v for k, v in meta if v is not None}),
+            # "meta": json.dumps({k: v for k, v in meta if v is not None}),
+            "agency": f"%{meta.agency}%",
         },
     )
 

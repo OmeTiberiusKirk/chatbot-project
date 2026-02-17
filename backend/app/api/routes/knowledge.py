@@ -48,15 +48,16 @@ async def asking(
     q: Question,
     extractor: OllamaMetadataExtractor = Depends(OllamaMetadataExtractor),
 ) -> dict:
-    emb = await ollama_embed(q.text)
+    # emb = await ollama_embed(q.text)
     metadata = await extractor.extract(q.text)
-    candidates = search_candidates(session, emb, metadata)
+    print(metadata)
+    # candidates = search_candidates(session, emb, metadata)
 
-    print("\n--- Retrieved Chunks ---")
-    for c in candidates:
-        print(c["score"])
-        print(c["text"][:200], "\n")
+    # print("\n--- Retrieved Chunks ---")
+    # for c in candidates:
+    #     print(c["score"])
+    #     print(c["text"][:200], "\n")
 
-    ans = await answer_question(q.text, candidates)
-    print(ans)
-    return {"content": ans}
+    # ans = await answer_question(q.text, candidates)
+    # print(ans)
+    return {"msg": metadata}

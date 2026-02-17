@@ -11,6 +11,7 @@ from app.modules.knowledge.text_normalization import clean_thai_text
 from app.modules.knowledge.schemas import DocumentMetadata
 import ollama
 from app.modules.knowledge.config import LLM_MODEL
+import re
 
 ALLOWED_EXTENSIONS = {"md", "pdf"}
 CHUNK_SIZE = 400
