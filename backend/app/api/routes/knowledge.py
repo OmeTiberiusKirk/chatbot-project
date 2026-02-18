@@ -61,11 +61,18 @@ async def asking(
     extractor: OllamaMetadataExtractor = Depends(OllamaMetadataExtractor),
 ) -> dict:
     metadata = await extractor.extract(q)
-    print(metadata)
+    print("extracted meta = ", metadata)
     if metadata.intent == "search":
-        msg = "ตอนนี้เอกสาร tor มีจำนวนมากรบกวนช่วยระบุปี และชื่อหน่วยงาน"
+        documents = find_all(session, metadata)
 
-        return {}
+        return {
+            "msg": "".join(
+                [
+                    f"เลขที่สัญญา:{d.contact_number} ชื่อ:{d.doc_metadata['title']} หน่วยงาน:{d.doc_metadata['agency']}"
+                    for d in documents
+                ]
+            )
+        }
         # return StreamingResponse(message_generator(msg), media_type="application/json")
 
     # emb = await ollama_embed(q.text)

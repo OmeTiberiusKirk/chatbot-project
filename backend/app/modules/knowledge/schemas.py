@@ -3,6 +3,7 @@ from typing import Optional, Literal
 
 
 class DocumentMetadata(BaseModel):
+    contact_number: Optional[str] = None
     agency: Optional[str] = None
     year: Optional[int] = None
     intent: Optional[Literal["count", "search", "summary"]] = None

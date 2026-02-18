@@ -54,27 +54,6 @@ class OllamaMetadataExtractor:
 
     async def extract(self, question: str) -> DocumentMetadata:
         try:
-            PROMPT = """
-            คุณเป็นระบบประมวลผลภาษาธรรมชาติ (NLP) ที่ทำหน้าที่สกัดข้อมูลเมตาดาตาเชิงโครงสร้างจากคำถามของผู้ใช้
-
-            ข้อบังคับ:
-            - ต้องตอบกลับเป็น JSON ที่ถูกต้องเท่านั้น
-            - ห้ามใช้ markdown
-            - ห้ามอธิบายเพิ่มเติมนอกเหนือจาก JSON
-
-            ฟิลด์ที่ต้องสกัด:
-            - agency: ชื่อหน่วยงาน องค์กร หรือมหาวิทยาลัย
-            - year: ปีของเอกสาร (พ.ศ.)
-            - intent: เจตนาต้องเป็นการนับ การค้นหา หรือการสรุป
-
-            กติกา:
-            - สกัดเฉพาะข้อมูลที่ระบุไว้อย่างชัดเจน หรืออนุมานได้อย่างสมเหตุสมผลจากคำถาม
-            - หากไม่มีข้อมูล ให้ใช้ค่า null
-
-            คำถาม:
-            \"\"\"{question}\"\"\"
-            """
-
             prompt = METADATA_PROMPT.format(question=question)
             raw = await ollama_generate(prompt)
             clean = raw.replace("```json", "").replace("```", "").strip()

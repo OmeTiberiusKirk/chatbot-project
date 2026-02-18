@@ -22,6 +22,8 @@ class Ingestion:
         self,
         session: SessionDep,
         upload_file: UploadFile,
+        contact_number: Annotated[str, Form()],
+        title: Annotated[str, Form()],
         agency: Annotated[str, Form()],
         year: Annotated[int, Form()],
     ):
@@ -29,7 +31,8 @@ class Ingestion:
         self.upload_file = upload_file
         self.file_path = UPLOAD_DIR / (upload_file.filename or "")
         self.file = upload_file.file
-        self.doc_meta = {"agency": agency, "year": year}
+        self.contact_number = contact_number
+        self.doc_meta = {"title": title, "agency": agency, "year": year}
 
         # bind related functions
         from app.modules.knowledge.image_processing import read_pdf_with_ocr

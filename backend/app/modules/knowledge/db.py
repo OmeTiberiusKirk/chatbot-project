@@ -19,6 +19,7 @@ def insert_document(
 
     try:
         doc = Document(
+            contact_number=self.contact_number,
             source=f"{self.file_path}",
             source_type=self.get_file_ext(),
             checksum=checksum,
@@ -78,14 +79,12 @@ def search_candidates(
     return candidates
 
 
-def find_all(session: SessionDep):
+def find_all(session: SessionDep, metadata: DocumentMetadata) -> list[Document]:
     stmt = select(Document)
-    rows: list[Document] = session.scalars(statement=stmt)
-    documents: list[Document] = []
-    for row in rows:
-        documents.append(Document(document_id=row.document_id))
+    if metadata.contact_number:
+        stmt = stmt.where(Document.contact_number == metadata.contact_number)
+    documents: list[Document] = session.scalars(statement=stmt)
     return documents
-    # return rows
 
 
 def to_pgvector(vec):

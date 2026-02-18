@@ -15,12 +15,14 @@ Strict rules:
 
 Return EXACTLY this JSON structure:
 {{
+  "contact_number": null,
   "agency": null,
   "year": null,
   "intent": null
 }}
 
 Field rules:
+- contact_number: number of the contact or TOR(Terms of Reference).
 - agency: Name of the agency, organization, or university.
 - year: Buddhist year (พ.ศ.) as number if mentioned
 - intent MUST be inferred from the question wording
