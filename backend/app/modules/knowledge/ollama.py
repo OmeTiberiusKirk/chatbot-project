@@ -7,6 +7,7 @@ from app.modules.knowledge.config import (
     LLM_MODEL,
     NOT_FOUND_THRESHOLD,
     METADATA_PROMPT,
+    QUESTION_PROMPT,
 )
 import json
 from fastapi import HTTPException, status
@@ -72,27 +73,5 @@ async def answer_question(question, top_chunks):
         return "Not found in document."
 
     context = "\n\n---\n\n".join([f"{c['text']}" for c in top_chunks])
-
-    prompt = f"""
-    คุณเป็นผู้ช่วยที่ตอบคำถามโดยอ้างอิงจากข้อมูลที่ให้มาเท่านั้น
-
-    ข้อบังคับ:
-    - ตอบเป็นภาษาไทยทั้งหมด
-    - ใช้ภาษาสุภาพ ชัดเจน และเป็นทางการ
-    - ห้ามเดา หรือแต่งข้อมูลเพิ่มจากความรู้ภายนอก
-    - หากข้อมูลใน Context ไม่เพียงพอ ให้ตอบว่า "ไม่พบข้อมูลในเอกสาร"
-    - อนุญาตให้ใช้ศัพท์เทคนิคภาษาอังกฤษได้เฉพาะกรณีจำเป็น และต้องอธิบายเป็นภาษาไทย
-
-    รูปแบบคำตอบ:
-    - ตอบให้ตรงคำถาม
-    - หากมีหลายประเด็น ให้ตอบเป็นข้อ ๆ
-    
-    ### Context
-    {context}
-
-    ### Question
-    {question}
-
-    ### Answer (ตอบเป็นภาษาไทย):
-    """
+    prompt = QUESTION_PROMPT.format(context, question)
     return (await ollama_generate(prompt)).strip()

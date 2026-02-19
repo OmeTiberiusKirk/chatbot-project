@@ -1,20 +1,22 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from app.modules.knowledge.main import Ingestion
-from app.modules.knowledge.document import ALLOWED_EXTENSIONS
 from pathlib import Path
-from app.core.models import FileExt
+import json
+import asyncio
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+
+from app.core.models import Document, FileExt
+from app.api.deps import SessionDep
+from app.modules.knowledge.main import Ingestion
+from app.modules.knowledge.db import search_candidates, find_all
+from app.modules.knowledge.document import ALLOWED_EXTENSIONS
+from app.modules.knowledge.config import SEARCH_PROMPT
 from app.modules.knowledge.ollama import (
     ollama_embed,
     OllamaMetadataExtractor,
     answer_question,
+    ollama_generate,
 )
-from app.api.deps import SessionDep
-from app.modules.knowledge.db import search_candidates, find_all
-import json
-import asyncio
-from fastapi.responses import StreamingResponse
-from app.core.models import Document
 
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
@@ -64,15 +66,17 @@ async def asking(
     print("extracted meta = ", metadata)
     if metadata.intent == "search":
         documents = find_all(session, metadata)
-
-        return {
-            "msg": "".join(
-                [
-                    f"เลขที่สัญญา:{d.contact_number} ชื่อ:{d.doc_metadata['title']} หน่วยงาน:{d.doc_metadata['agency']}"
-                    for d in documents
-                ]
-            )
-        }
+        context = "\n".join(
+            [
+                f"{i+1}. เลขที่สัญญา:{d.contact_number}, ปี:{d.doc_metadata["year"]}, หน่วยงาน:{d.doc_metadata['agency']}, ชื่อ:{d.doc_metadata['title']}"
+                for i, d in enumerate(documents)
+            ]
+        )
+        context = f"รายชื่อโครงการ TOR(Terms of Reference)\n{context}"
+        prompt = SEARCH_PROMPT.format(context=context, question=q)
+        answer = (await ollama_generate(prompt)).strip()
+        print(answer)
+        return {"msg": answer}
         # return StreamingResponse(message_generator(msg), media_type="application/json")
 
     # emb = await ollama_embed(q.text)
